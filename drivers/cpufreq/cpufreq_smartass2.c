@@ -42,7 +42,7 @@
  * towards the ideal frequency and slower after it has passed it. Similarly,
  * lowering the frequency towards the ideal frequency is faster than below it.
  */
-#define DEFAULT_AWAKE_IDEAL_FREQ 300000
+#define DEFAULT_AWAKE_IDEAL_FREQ 787200
 static unsigned int awake_ideal_freq;
 
 /*
@@ -51,7 +51,7 @@ static unsigned int awake_ideal_freq;
  * that practically when sleep_ideal_freq==0 the awake_ideal_freq is used
  * also when suspended).
  */
-#define DEFAULT_SLEEP_IDEAL_FREQ 300000
+#define DEFAULT_SLEEP_IDEAL_FREQ 192000
 static unsigned int sleep_ideal_freq;
 
 /*
@@ -100,7 +100,7 @@ static unsigned long down_rate_us;
  * The frequency to set when waking up from sleep.
  * When sleep_ideal_freq=0 this will have no effect.
  */
-#define DEFAULT_SLEEP_WAKEUP_FREQ 960000
+#define DEFAULT_SLEEP_WAKEUP_FREQ 600000
 static unsigned int sleep_wakeup_freq;
 
 /*
@@ -285,8 +285,8 @@ static void cpufreq_smartass_timer(unsigned long cpu)
 	if (this_smartass->idle_exit_time == 0 || update_time == this_smartass->idle_exit_time)
 		return;
 
-	delta_idle = cputime64_sub(now_idle, this_smartass->time_in_idle);
-	delta_time = cputime64_sub(update_time, this_smartass->idle_exit_time);
+	delta_idle = (unsigned int)(now_idle - this_smartass->time_in_idle);
+	delta_time = (unsigned int)(update_time - this_smartass->idle_exit_time);
 
 	/* If timer ran less than 1ms after short-term sample started, retry. */
 	if (delta_time < 1000) {
@@ -313,7 +313,7 @@ static void cpufreq_smartass_timer(unsigned long cpu)
 	{
 		if (old_freq < policy->max &&
 			 (old_freq < this_smartass->ideal_speed || delta_idle == 0 ||
-			  cputime64_sub(update_time, this_smartass->freq_change_time) >= up_rate_us))
+			 (update_time - this_smartass->freq_change_time) >= up_rate_us))
 		{
 			dprintk(SMARTASS_DEBUG_ALG,"smartassT @ %d ramp up: load %d (delta_idle %llu)\n",
 				old_freq,cpu_load,delta_idle);
@@ -328,7 +328,7 @@ static void cpufreq_smartass_timer(unsigned long cpu)
 	 * frequency we require that we have been at this frequency for at least down_rate_us: */
 	else if (cpu_load < min_cpu_load && old_freq > policy->min &&
 		 (old_freq > this_smartass->ideal_speed ||
-		  cputime64_sub(update_time, this_smartass->freq_change_time) >= down_rate_us))
+		 (update_time - this_smartass->freq_change_time) >= down_rate_us))
 	{
 		dprintk(SMARTASS_DEBUG_ALG,"smartassT @ %d ramp down: load %d (delta_idle %llu)\n",
 			old_freq,cpu_load,delta_idle);
