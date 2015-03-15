@@ -196,7 +196,7 @@ config CPU_FREQ_GOV_SMARTASSV2
 
 config SMARTASSV2_SLEEP_IDEAL_FREQ
 	int "The ideal frequency to use when awake."
-	default 1190400
+	default 192000
 	depends on CPU_FREQ_GOV_SMARTASSV2
 	help
 	  The "ideal" frequency to use when awake. The governor will ramp up faster
@@ -205,7 +205,7 @@ config SMARTASSV2_SLEEP_IDEAL_FREQ
 
 config SMARTASSV2_AWAKE_IDEAL_FREQ
 	int "The ideal frequency to use when suspended."
-	default 300000
+	default 787200
 	depends on CPU_FREQ_GOV_SMARTASSV2
 	help
 	  The "ideal" frequency to use when suspended.
@@ -295,7 +295,7 @@ config LAGFREE_MAX_LOAD
 
 config LAGFREE_MIN_LOAD
 	int "Min CPU Load"
-	default 15
+	default 25
 	depends on CPU_FREQ_GOV_LAGFREE
 	help
 	  CPU freq will be decrease if measured load < min_cpu_load;
