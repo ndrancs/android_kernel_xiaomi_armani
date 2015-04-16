@@ -87,10 +87,13 @@ static struct alucard_tuners {
 	.inc_cpu_load = ATOMIC_INIT(80),
 	.dec_cpu_load_at_min_freq = ATOMIC_INIT(40),
 	.dec_cpu_load = ATOMIC_INIT(60),
+#ifdef CONFIG_CPU_MSM8226
+	.freq_responsiveness = ATOMIC_INIT(1190400),
+#else
 	.freq_responsiveness = ATOMIC_INIT(918000),
-	.pump_inc_step = ATOMIC_INIT(2),
-	.pump_dec_step = ATOMIC_INIT(1),
-
+#endif
+	.pump_inc_step = ATOMIC_INIT(1),
+	.pump_dec_step = ATOMIC_INIT(2),
 };
 
 /************************** sysfs interface ************************/
@@ -159,7 +162,11 @@ static void update_sampling_rate(unsigned int new_rate)
 			cancel_delayed_work_sync(&alucard_cpuinfo->work);
 			mutex_lock(&alucard_cpuinfo->timer_mutex);
 
-			queue_delayed_work_on(alucard_cpuinfo->cpu, system_wq, &alucard_cpuinfo->work, usecs_to_jiffies(new_rate));
+			#ifdef CONFIG_CPU_MSM8226
+				mod_delayed_work_on(alucard_cpuinfo->cpu, system_wq, &alucard_cpuinfo->work, usecs_to_jiffies(new_rate));
+			#else
+				queue_delayed_work_on(alucard_cpuinfo->cpu, system_wq, &alucard_cpuinfo->work, usecs_to_jiffies(new_rate));
+			#endif
 		}
 		mutex_unlock(&alucard_cpuinfo->timer_mutex);
 	}
@@ -374,8 +381,10 @@ static void alucard_check_cpu(struct cpufreq_alucard_cpuinfo *this_alucard_cpuin
 	int pump_dec_step;
 	cputime64_t cur_wall_time, cur_idle_time;
 	unsigned int wall_time, idle_time;
+#ifndef CONFIG_CPU_MSM8226
 	unsigned int index = 0;
 	unsigned int tmp_freq = 0;
+#endif
 	unsigned int next_freq = 0;
 	int cur_load = -1;
 	unsigned int cpu;
@@ -394,13 +403,12 @@ static void alucard_check_cpu(struct cpufreq_alucard_cpuinfo *this_alucard_cpuin
 			(cur_idle_time - this_alucard_cpuinfo->prev_cpu_idle);
 	this_alucard_cpuinfo->prev_cpu_idle = cur_idle_time;
 
-	if (!cpu_policy || cpu_policy == NULL)
+	if (!cpu_policy)
 		return;
 
 	/*printk(KERN_ERR "TIMER CPU[%u], wall[%u], idle[%u]\n",cpu, wall_time, idle_time);*/
 	if (wall_time >= idle_time) { /*if wall_time < idle_time, evaluate cpu load next time*/
 		cur_load = wall_time > idle_time ? (100 * (wall_time - idle_time)) / wall_time : 1;/*if wall_time is equal to idle_time cpu_load is equal to 1*/
-		
 		/* Checking Frequency Limit */
 		min_freq = cpu_policy->min;
 		/* Maximum increasing frequency possible */
@@ -420,18 +428,30 @@ static void alucard_check_cpu(struct cpufreq_alucard_cpuinfo *this_alucard_cpuin
 			dec_cpu_load = atomic_read(&alucard_tuners_ins.dec_cpu_load);
 		}		
 		/* Check for frequency increase or for frequency decrease */
+#ifdef CONFIG_CPU_MSM8226
+		if (cur_load >= inc_cpu_load && cpu_policy->cur < max_freq) {
+			next_freq = min(cpu_policy->cur + (pump_inc_step * 100000), max_freq);
+		} else if (cur_load < dec_cpu_load && cpu_policy->cur > min_freq) {
+			next_freq = max(cpu_policy->cur - (pump_dec_step * 100000), min_freq);
+		} else {
+			next_freq = cpu_policy->cur;
+		}
+#else
 		if (cur_load >= inc_cpu_load && cpu_policy->cur < max_freq) {
 			tmp_freq = min(cpu_policy->cur + (pump_inc_step * 108000), max_freq);
 		} else if (cur_load < dec_cpu_load && cpu_policy->cur > min_freq) {
 			tmp_freq = max(cpu_policy->cur - (pump_dec_step * 108000), min_freq);
 		} else {
-			/* if cpu frequency is already at maximum or minimum or cur_load is between inc_cpu_load and dec_cpu_load var, we don't need to set frequency!
-			return; */
 			tmp_freq = cpu_policy->cur;
 		}
 		cpufreq_frequency_table_target(cpu_policy, this_alucard_cpuinfo->freq_table, tmp_freq,
-			CPUFREQ_RELATION_L, &index);
+			CPUFREQ_RELATION_H, &index);
+		if (this_alucard_cpuinfo->freq_table[index].frequency != cpu_policy->cur) {
+			cpufreq_frequency_table_target(cpu_policy, this_alucard_cpuinfo->freq_table, tmp_freq,
+				CPUFREQ_RELATION_L, &index);
+		}
 	 	next_freq = this_alucard_cpuinfo->freq_table[index].frequency;
+#endif
 		/*printk(KERN_ERR "FREQ CALC.: CPU[%u], load[%d], target freq[%u], cur freq[%u], min freq[%u], max_freq[%u]\n",cpu, cur_load, next_freq, cpu_policy->cur, cpu_policy->min, max_freq);*/
 		if (next_freq != cpu_policy->cur && cpu_online(cpu)) {
 			__cpufreq_driver_target(cpu_policy, next_freq, CPUFREQ_RELATION_L);
@@ -459,7 +479,11 @@ static void do_alucard_timer(struct work_struct *work)
 		delay -= jiffies % delay;
 	}
 
+#ifdef CONFIG_CPU_MSM8226
+	mod_delayed_work_on(cpu, system_wq, &alucard_cpuinfo->work, delay);
+#else
 	queue_delayed_work_on(cpu, system_wq, &alucard_cpuinfo->work, delay);
+#endif
 	mutex_unlock(&alucard_cpuinfo->timer_mutex);
 }
 
@@ -512,8 +536,13 @@ static int cpufreq_governor_alucard(struct cpufreq_policy *policy,
 		}
 
 		this_alucard_cpuinfo->enable = 1;
+#ifdef CONFIG_CPU_MSM8226
+		INIT_DEFERRABLE_WORK(&this_alucard_cpuinfo->work, do_alucard_timer);
+		mod_delayed_work_on(this_alucard_cpuinfo->cpu, system_wq, &this_alucard_cpuinfo->work, delay);
+#else
 		INIT_DELAYED_WORK_DEFERRABLE(&this_alucard_cpuinfo->work, do_alucard_timer);
 		queue_delayed_work_on(this_alucard_cpuinfo->cpu, system_wq, &this_alucard_cpuinfo->work, delay);
+#endif
 
 		break;
 
