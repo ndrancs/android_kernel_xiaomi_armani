@@ -87,12 +87,8 @@ static struct alucard_tuners {
 	.inc_cpu_load = ATOMIC_INIT(80),
 	.dec_cpu_load_at_min_freq = ATOMIC_INIT(40),
 	.dec_cpu_load = ATOMIC_INIT(60),
-#ifdef CONFIG_CPU_MSM8226
 	.freq_responsiveness = ATOMIC_INIT(1190400),
-#else
-	.freq_responsiveness = ATOMIC_INIT(918000),
-#endif
-	.pump_inc_step = ATOMIC_INIT(1),
+	.pump_inc_step = ATOMIC_INIT(2),
 	.pump_dec_step = ATOMIC_INIT(2),
 };
 
