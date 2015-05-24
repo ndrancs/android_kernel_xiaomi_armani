@@ -2168,7 +2168,7 @@ struct ft5x06_data *ft5x06_probe(struct device *dev,
 
 	// POWER
 	memset(&ft5x06->power_finger, 0, sizeof(ft5x06->power_finger));
-	ft5x06->d2w_switch = 1; // enable d2w by default
+	ft5x06->d2w_switch = 0; // enable d2w by default
 	ft5x06->touch_cnt = false; // touch_cnt variable false by default
 	ft5x06->power_input = input_allocate_device();
 	if (!ft5x06->power_input)
