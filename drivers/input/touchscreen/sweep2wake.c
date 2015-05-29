@@ -224,7 +224,7 @@ static void detect_sweep2wake(int x, int y, bool st)
 			x, x_pre);
 #endif
 #ifdef EXP_KEYPAD_S2W
-	if (x_pre) {
+	if (x_pre && s2w_switch) {
 		if (s2w_keypad_swipe_length == 2) {
 			if (x == S2W_KEY_CENTER) {
 				if (x_pre == S2W_KEY_LEFT) {
