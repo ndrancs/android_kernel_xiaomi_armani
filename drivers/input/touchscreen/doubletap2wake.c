@@ -41,10 +41,10 @@
 //#define WAKE_HOOKS_DEFINED
 
 #ifndef WAKE_HOOKS_DEFINED
-#ifndef CONFIG_HAS_EARLYSUSPEND
+#ifndef CONFIG_POWERSUSPEND
 #include <linux/lcd_notify.h>
 #else
-#include <linux/earlysuspend.h>
+#include <linux/powersuspend.h>
 #endif
 #endif // WAKE_HOOKS_DEFINED
 
@@ -100,7 +100,7 @@ bool dt2w_scr_suspended = false;
 static int key_code = KEY_POWER;
 int dt2w_sent_play_pause = 0;
 #ifndef WAKE_HOOKS_DEFINED
-#ifndef CONFIG_HAS_EARLYSUSPEND
+#ifndef CONFIG_POWERSUSPEND
 static struct notifier_block dt2w_lcd_notif;
 #endif
 #endif // WAKE_HOOKS_DEFINED
@@ -287,10 +287,8 @@ static void dt2w_input_event(struct input_handle *handle, unsigned int type,
 }
 
 static int input_dev_filter(struct input_dev *dev) {
-	if (strstr(dev->name, "ft5x06")
-		||strstr(dev->name, "ist30xx_ts")
+	if (strstr(dev->name, "ist30xx_ts")
 		||strstr(dev->name, "Goodix-CTP")
-		||strstr(dev->name, "himax-touchscreen")
 		) {
 		return 0;
 	} else {
@@ -350,7 +348,7 @@ static struct input_handler dt2w_input_handler = {
 };
 
 #ifndef WAKE_HOOKS_DEFINED
-#ifndef CONFIG_HAS_EARLYSUSPEND
+#ifndef CONFIG_POWERSUSPEND
 static int lcd_notifier_callback(struct notifier_block *this,
 				unsigned long event, void *data)
 {
@@ -369,18 +367,17 @@ static int lcd_notifier_callback(struct notifier_block *this,
 	return 0;
 }
 #else
-static void dt2w_early_suspend(struct early_suspend *h) {
+static void dt2w_power_suspend(struct power_suspend *h) {
 	dt2w_scr_suspended = true;
 }
 
-static void dt2w_late_resume(struct early_suspend *h) {
+static void dt2w_power_resume(struct power_suspend *h) {
 	dt2w_scr_suspended = false;
 }
 
-static struct early_suspend dt2w_early_suspend_handler = {
-	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
-	.suspend = dt2w_early_suspend,
-	.resume = dt2w_late_resume,
+static struct power_suspend dt2w_power_suspend_handler = {
+	.suspend = dt2w_power_suspend,
+	.resume = dt2w_power_resume,
 };
 #endif
 #endif // WAKE_HOOKS_DEFINED
@@ -475,13 +472,13 @@ static int __init doubletap2wake_init(void)
 		pr_err("%s: Failed to register dt2w_input_handler\n", __func__);
 
 #ifndef WAKE_HOOKS_DEFINED
-#ifndef CONFIG_HAS_EARLYSUSPEND
+#ifndef CONFIG_POWERSUSPEND
 	dt2w_lcd_notif.notifier_call = lcd_notifier_callback;
 	if (lcd_register_client(&dt2w_lcd_notif) != 0) {
 		pr_err("%s: Failed to register lcd callback\n", __func__);
 	}
 #else
-	register_early_suspend(&dt2w_early_suspend_handler);
+	register_power_suspend(&dt2w_power_suspend_handler);
 #endif
 #endif // WAKE_HOOKS_DEFINED
 
@@ -514,7 +511,7 @@ static void __exit doubletap2wake_exit(void)
 	kobject_del(android_touch_kobj);
 #endif
 #ifndef WAKE_HOOKS_DEFINED
-#ifndef CONFIG_HAS_EARLYSUSPEND
+#ifndef CONFIG_POWERSUSPEND
 	lcd_unregister_client(&dt2w_lcd_notif);
 #endif
 #endif
