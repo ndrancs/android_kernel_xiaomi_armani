@@ -158,10 +158,10 @@ static unsigned int get_nr_run_avg(void)
 static unsigned hotplugging_rate = 0;
 
 static atomic_t hotplug_freq[4][2] = {
-	{ATOMIC_INIT(0), ATOMIC_INIT(960000)},
-	{ATOMIC_INIT(652800), ATOMIC_INIT(1036800)},
-	{ATOMIC_INIT(729600), ATOMIC_INIT(1190400)},
-	{ATOMIC_INIT(883200), ATOMIC_INIT(0)}
+	{ATOMIC_INIT(0), ATOMIC_INIT(998400)},
+	{ATOMIC_INIT(600000), ATOMIC_INIT(1094400)},
+	{ATOMIC_INIT(787200), ATOMIC_INIT(1190400)},
+	{ATOMIC_INIT(998400), ATOMIC_INIT(0)}
 };
 static atomic_t hotplug_load[4][2] = {
 	{ATOMIC_INIT(0), ATOMIC_INIT(40)},
